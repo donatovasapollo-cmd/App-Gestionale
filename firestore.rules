@@ -1,0 +1,85 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidQuote(data) {
+      return data.keys().hasAll([
+          'quoteNumber', 'revision', 'macroCategory', 'pricingMode',
+          'clientName', 'clientVat', 'projectTitle',
+          'projectDescription', 'estimatedHours', 'hourlyRate',
+          'totalAmount', 'status', 'orgId', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'quoteNumber', 'revision', 'macroCategory', 'pricingMode',
+          'clientName', 'clientVat', 'projectTitle',
+          'projectDescription', 'estimatedDays', 'dailyRate',
+          'estimatedHours', 'hourlyRate', 'lineItems',
+          'totalAmount', 'status', 'orgId', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.quoteNumber is string && data.quoteNumber.size() >= 3 && data.quoteNumber.size() <= 40 &&
+        data.revision is int && data.revision >= 0 && data.revision <= 500 &&
+        data.macroCategory is string && data.macroCategory in ['qualifica', 'compliance', 'taratura'] &&
+        data.pricingMode is string && data.pricingMode in ['consuntivo_giornate', 'progetto_equipment', 'a_strumento'] &&
+        data.clientName is string && data.clientName.size() >= 2 && data.clientName.size() <= 120 &&
+        data.clientVat is string && data.clientVat.size() >= 5 && data.clientVat.size() <= 30 &&
+        data.projectTitle is string && data.projectTitle.size() >= 3 && data.projectTitle.size() <= 150 &&
+        data.projectDescription is string && data.projectDescription.size() >= 5 && data.projectDescription.size() <= 2000 &&
+        (!('estimatedDays' in data) || (data.estimatedDays is number && data.estimatedDays >= 0 && data.estimatedDays <= 2000)) &&
+        (!('dailyRate' in data) || (data.dailyRate is number && data.dailyRate >= 0 && data.dailyRate <= 20000)) &&
+        (!('lineItems' in data) || (data.lineItems is list && data.lineItems.size() <= 20 && (data.lineItems.size() == 0 || data.lineItems[0] is map))) &&
+        data.estimatedHours is number && data.estimatedHours >= 1 && data.estimatedHours <= 10000 &&
+        data.hourlyRate is number && data.hourlyRate >= 1 && data.hourlyRate <= 5000 &&
+        data.totalAmount is number && data.totalAmount >= 1 && data.totalAmount <= 20000000 &&
+        data.status is string && data.status in ['sent', 'accepted', 'superseded', 'cancelled'] &&
+        data.orgId is string && data.orgId == 'enterprise_hq' &&
+        isValidId(data.createdByUid) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /quotes/{quoteId} {
+      allow get: if isValidId(quoteId) && isVerifiedUser() && existing().orgId == 'enterprise_hq';
+      allow list: if isVerifiedUser() && existing().orgId == 'enterprise_hq';
+      allow create: if isValidId(quoteId) && isVerifiedUser() &&
+        isValidQuote(incoming()) &&
+        incoming().createdByUid == request.auth.uid &&
+        incoming().status == 'sent' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(quoteId) && isVerifiedUser() &&
+        isValidQuote(incoming()) &&
+        existing().status == 'sent' &&
+        existing().createdByUid == request.auth.uid &&
+        incoming().createdByUid == existing().createdByUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().orgId == existing().orgId &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if false;
+    }
+  }
+}

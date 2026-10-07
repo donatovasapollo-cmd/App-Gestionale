@@ -1,0 +1,6 @@
+{
+  "name": "GestionApp",
+  "description": "Piattaforma di gestione quotazioni, ordini e attività",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

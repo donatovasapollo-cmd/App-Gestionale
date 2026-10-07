@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "Quote": {
+      "title": "Quote",
+      "description": "Commercial offer with automatic unique number, revision index (Rev 0, 1, 2...), macro category (qualifica, compliance, taratura), pricing mode (consuntivo_giornate, progetto_equipment, a_strumento) and up to 20 line items.",
+      "type": "object",
+      "properties": {
+        "quoteNumber": { "type": "string", "minLength": 3, "maxLength": 40 },
+        "revision": { "type": "number" },
+        "macroCategory": { "type": "string", "enum": ["qualifica", "compliance", "taratura"] },
+        "pricingMode": { "type": "string", "enum": ["consuntivo_giornate", "progetto_equipment", "a_strumento"] },
+        "clientName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "clientVat": { "type": "string", "minLength": 5, "maxLength": 30 },
+        "projectTitle": { "type": "string", "minLength": 3, "maxLength": 150 },
+        "projectDescription": { "type": "string", "minLength": 5, "maxLength": 2000 },
+        "estimatedDays": { "type": "number" },
+        "dailyRate": { "type": "number" },
+        "estimatedHours": { "type": "number" },
+        "hourlyRate": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["sent", "accepted", "superseded", "cancelled"] },
+        "orgId": { "type": "string", "enum": ["enterprise_hq"] },
+        "createdByUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "quoteNumber",
+        "revision",
+        "macroCategory",
+        "pricingMode",
+        "clientName",
+        "clientVat",
+        "projectTitle",
+        "projectDescription",
+        "estimatedHours",
+        "hourlyRate",
+        "totalAmount",
+        "status",
+        "orgId",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/quotes/{quoteId}": {
+      "schema": { "$ref": "Quote" },
+      "description": "Commercial quotes with revision tracking and structured macro-categories."
+    }
+  }
+}
